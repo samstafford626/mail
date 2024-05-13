@@ -51,11 +51,25 @@ function load_mailbox(mailbox) {
       const element = document.createElement("tr");
       element.className = "email";
       element.setAttribute("data-id", email.id);
+      element.id = `email-${email.id}`;
 
       if (email.read) {
         element.style.backgroundColor = 'lightgrey';
-      };
-      element.innerHTML = `<td>${email.sender}</td><td>${email.subject}</td><td>${email.timestamp}</td>`;
+      } else {
+        element.style.backgroundColor = 'white';
+      }
+
+      // Button Html for archiving/unarchiving and marking as read/unread
+      let buttonRead = document.createElement("button");
+      buttonRead.className = "btn btn-sm btn-outline-secondary";
+      buttonRead.innerHTML = "Read";
+      buttonRead.id = `read-${email.id}`;
+
+      let buttonArchive = document.createElement("button");
+      buttonArchive.className = "btn btn-sm btn-outline-secondary";
+      buttonArchive.innerHTML = "Archive";
+
+      element.innerHTML = `<td>${email.sender}</td><td>${email.subject}</td><td>${email.timestamp}</td>` + '<td>' + buttonRead.outerHTML + '</td><td>' + buttonArchive.outerHTML + '</td>';
       document.querySelector('#emails').append(element);
 
       element.addEventListener('click', () => {
@@ -66,6 +80,12 @@ function load_mailbox(mailbox) {
           display_email(email);
         })
       })
+
+      document.querySelector(`#read-${email.id}`).addEventListener('click', (event) => {
+        toggle_read(email.id);
+        console.log("READ")
+        event.stopPropagation();
+      });
     })
   });
   
@@ -107,23 +127,49 @@ function display_email(email) {
     <p>${body}</p>
   `;
 
-  mark_read(email.id);
+  if (!email.read) {
+    toggle_read(email.id);
+  }
 
   return false;
 }
 
-function mark_read(email_id) {
-  fetch(`/emails/${email_id}`, {
-    method: 'PUT',
-    body: JSON.stringify({
-      read: true
-    })
-  })
+
+function toggle_read(email_id) {
+
+  fetch(`/emails/${email_id}`)
   .then(response => response.json())
-  .then(result => {
-    console.log(result);
+  .then(email => {
+    if (email.read) {
+      
+      // Mark email as unread
+
+      fetch(`/emails/${email_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          read: false
+        })
+      })
+      
+    } else {
+        
+      // Mark email as read
+
+      fetch(`/emails/${email_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          read: true
+        })
+      })
+
+    }
   })
-  .catch(error => {
-    console.log('Error:', error);
-  });
+  .then(() => {
+    if (document.querySelector(`#email-${email_id}`).style.backgroundColor === 'lightgrey') {
+      document.querySelector(`#email-${email_id}`).style.backgroundColor = 'white';
+    } else {
+      document.querySelector(`#email-${email_id}`).style.backgroundColor = 'lightgrey';
+    }
+  })
+
 }
