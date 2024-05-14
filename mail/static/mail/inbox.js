@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
-function compose_email() {
+function compose_email(recipient = '', subject = '', body = '') {
 
   // Show compose view and hide other views
   document.querySelector('#emails-view').style.display = 'none';
@@ -24,9 +24,9 @@ function compose_email() {
   document.querySelector('#email-view').style.display = 'none';
 
   // Clear out composition fields
-  document.querySelector('#compose-recipients').value = '';
-  document.querySelector('#compose-subject').value = '';
-  document.querySelector('#compose-body').value = '';
+  document.querySelector('#compose-recipients').value = recipient;
+  document.querySelector('#compose-subject').value = subject;
+  document.querySelector('#compose-body').value = body;
 }
 
 function load_mailbox(mailbox) {
@@ -47,28 +47,37 @@ function load_mailbox(mailbox) {
   .then(response => response.json())
   .then(emails => {
     emails.forEach(email => {
-      console.log(email);
+      
+      // Create email element
+      console.log(email)
       const element = document.createElement("tr");
       element.className = "email";
       element.setAttribute("data-id", email.id);
       element.id = `email-${email.id}`;
 
-      if (email.read) {
-        element.style.backgroundColor = 'lightgrey';
-      } else {
-        element.style.backgroundColor = 'white';
-      }
-
-      // Button Html for archiving/unarchiving and marking as read/unread
+      // Create Button Elements (READ and ARCHIVE)
       let buttonRead = document.createElement("button");
       buttonRead.className = "btn btn-sm btn-outline-secondary";
-      buttonRead.innerHTML = "Read";
       buttonRead.id = `read-${email.id}`;
-
       let buttonArchive = document.createElement("button");
       buttonArchive.className = "btn btn-sm btn-outline-secondary";
-      buttonArchive.innerHTML = "Archive";
       buttonArchive.id = `archive-${email.id}`;
+
+      // Set background color based on read status
+      if (email.read) {
+        element.style.backgroundColor = 'lightgrey';
+        buttonRead.innerHTML = "Mark as unread";
+      } else {
+        element.style.backgroundColor = 'white';
+        buttonRead.innerHTML = "Mark as read";
+      }
+
+      // Set buttonArchive innerHTML based on Archive status
+      if (email.archived) {
+        buttonArchive.innerHTML = "Unarchive";
+      } else {
+        buttonArchive.innerHTML = "Archive";
+      }
 
       // Select to or from depending on mailbox
       if (mailbox === 'sent') {
@@ -136,15 +145,38 @@ function display_email(email) {
   document.querySelector('#compose-view').style.display = 'none';
   document.querySelector('#email-view').style.display = 'block';
 
+  const to= email.recipients;
   const from = email.sender;
   const subject = email.subject;
   const body = email.body;
 
   document.querySelector('#email-view').innerHTML = `
-    <h3>From: ${from}</h3>
-    <h3>Subject: ${subject}</h3>
+    <h3><strong>To:</strong>   ${to}</h3>
+    <h3><strong>From:</strong>   ${from}</h3>
+    <br>
+    <h2><strong>Subject:</strong> ${subject}</h3>
+    <br>
     <p>${body}</p>
+
+    <button class="btn btn-sm btn-outline-secondary" id="reply">Reply</button>
   `;
+
+  // New subject for reply email
+  let replySubject;
+  console.log(subject.slice(0, 3));
+  if (subject.slice(0, 3) == "Re:") {
+    replySubject = subject;
+  } else {
+    replySubject = `Re: ${subject}`;
+  };
+
+  // New Body for reply email
+  let replyBody = `On ${email.timestamp} ${from} wrote: ${body}`;
+
+  // Add event listener for reply button
+  document.querySelector('#reply').addEventListener('click', () => {
+    compose_email(from, replySubject, replyBody);
+  });
 
   if (!email.read) {
     toggle_read(email.id);
@@ -186,8 +218,10 @@ function toggle_read(email_id) {
   .then(() => {
     if (document.querySelector(`#email-${email_id}`).style.backgroundColor === 'lightgrey') {
       document.querySelector(`#email-${email_id}`).style.backgroundColor = 'white';
+      document.querySelector(`#read-${email_id}`).innerHTML = "Mark as read";
     } else {
       document.querySelector(`#email-${email_id}`).style.backgroundColor = 'lightgrey';
+      document.querySelector(`#read-${email_id}`).innerHTML = "Mark as unread";
     }
   })
 
