@@ -68,10 +68,22 @@ function load_mailbox(mailbox) {
       let buttonArchive = document.createElement("button");
       buttonArchive.className = "btn btn-sm btn-outline-secondary";
       buttonArchive.innerHTML = "Archive";
+      buttonArchive.id = `archive-${email.id}`;
 
-      element.innerHTML = `<td>${email.sender}</td><td>${email.subject}</td><td>${email.timestamp}</td>` + '<td>' + buttonRead.outerHTML + '</td><td>' + buttonArchive.outerHTML + '</td>';
+      // Select to or from depending on mailbox
+      if (mailbox === 'sent') {
+        senderOrRecipient = email.recipients;
+        document.querySelector("#to-from").innerHTML = "To";
+      } else {
+        senderOrRecipient = email.sender;
+        document.querySelector("#to-from").innerHTML = "From";
+      }
+
+      element.innerHTML = `<td>${senderOrRecipient}</td><td>${email.subject}</td><td>${email.timestamp}</td>` + '<td>' + buttonRead.outerHTML + '</td><td>' + buttonArchive.outerHTML + '</td>';
       document.querySelector('#emails').append(element);
 
+
+      // Event listeners for display email
       element.addEventListener('click', () => {
         fetch(`/emails/${element.dataset.id}`)
         .then(response => response.json())
@@ -79,11 +91,18 @@ function load_mailbox(mailbox) {
           console.log(email);
           display_email(email);
         })
-      })
+      });
 
+      // Event listener for toggle read
       document.querySelector(`#read-${email.id}`).addEventListener('click', (event) => {
         toggle_read(email.id);
-        console.log("READ")
+        console.log("READ");
+        event.stopPropagation();
+      });
+
+      // Event listener for toggle archive
+      document.querySelector(`#archive-${email.id}`).addEventListener('click', (event) => {
+        toggle_archive(email.id);
         event.stopPropagation();
       });
     })
@@ -172,4 +191,50 @@ function toggle_read(email_id) {
     }
   })
 
+}
+
+function toggle_archive(email_id) {
+  // Fetch email in question
+  fetch(`/emails/${email_id}`)
+  .then(response => response.json())
+  .then(email => {
+
+    // If email is archived currently
+    if (email.archived) {
+      
+      // Unarchive email
+
+      fetch(`/emails/${email_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          archived: false
+        })
+      })
+      .then(() => {
+        load_mailbox('archive');
+      })
+
+      console.log(email);
+      console.log("UNARCHIVED");
+      
+    // If email is not archived currently  
+    } else {
+        
+      // Archive email
+
+      fetch(`/emails/${email_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          archived: true
+        })
+      })
+      .then(() => {
+        load_mailbox('inbox');
+      })
+
+      console.log(email);
+      console.log("ARCHIVED");
+    }
+  })
+  
 }
